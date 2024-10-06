@@ -95,7 +95,7 @@ local function drag(corpse, dragname)
         draggedCorpses[corpse.ID()] = nil
         return
     end
-
+    
     local target_distance = mq.TLO.Target.Distance()
     local current_target_name = mq.TLO.Target.Name()
 
@@ -104,7 +104,6 @@ local function drag(corpse, dragname)
 
     -- If a cleric is near the corpse, do not proceed with dragging
     if clericNearCorpse then
-        print("Cleric too close to corpse", dragname, "removing from draggedCorpses")
         draggedCorpses[corpse.ID()] = nil
         return
     end
