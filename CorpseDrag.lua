@@ -47,6 +47,19 @@ local function isClericInGroupOrRaid(clericName)
     return false  -- Cleric is not in the group or raid
 end
 
+-- Function to check if the character running the script is in a group or raid
+local function isInGroupOrRaid()
+    local inRaid = mq.TLO.Raid.Members() > 0  -- Check if the character is in a raid
+    local inGroup = mq.TLO.Me.Grouped()        -- Check if the character is in a group
+    return inRaid, inGroup
+end
+
+-- Function to check if a corpse belongs to the dragger (i.e., the character running the script)
+local function isOwnCorpse(corpse)
+    local myName = mq.TLO.Me.Name() .. "'s corpse"  -- Append "'s corpse" to the player's name
+    return corpse.CleanName() == myName  -- Compare the corpse's clean name with the dragger's name
+end
+
 -- Helper function to check if a cleric in the group or raid is near the corpse
 local function isClericNearCorpse(corpse)
     -- Validate the corpse's existence
@@ -87,6 +100,45 @@ local function isClericNearCorpse(corpse)
     return false  -- No clerics are near the corpse
 end
 
+-- Function to check if a corpse belongs to a group or raid member
+local function isCorpseFromGroupOrRaid(corpse, inRaid, inGroup)
+    local corpsename = corpse.CleanName()  -- Get the full corpse name
+    local corpseadd = "'s corpse"  -- Used for name comparison
+
+    -- Debug: Print the corpse name
+    print("Corpse Name: " .. corpsename)
+
+    -- Always allow dragging the dragger's own corpse
+    if isOwnCorpse(corpse) then
+        print("Dragging own corpse")
+        return true
+    end
+
+    -- If the character is in a raid, check against raid members' corpse names
+    if inRaid then
+        local raidSize = mq.TLO.Raid.Members() or 0
+        for i = 1, raidSize do
+            local raidMemberName = mq.TLO.Raid.Member(i).Name() .. corpseadd
+            if raidMemberName == corpsename then
+                print("Corpse belongs to a raid member")
+                return true
+            end
+        end
+    -- If the character is not in a raid but is in a group, check against group members' corpse names
+    elseif inGroup then
+        local groupSize = mq.TLO.Group.Members() or 0
+        for i = 1, groupSize do
+            local groupMemberName = mq.TLO.Group.Member(i).Name() .. corpseadd
+            if groupMemberName == corpsename then
+                print("Corpse belongs to a group member")
+                return true
+            end
+        end
+    end
+
+    return false  -- The corpse does not belong to a group or raid member
+end
+
 -- Main function to drag the corpse if no cleric is near
 local function drag(corpse, dragname)
     -- Validate the corpse's existence before continuing
@@ -95,18 +147,28 @@ local function drag(corpse, dragname)
         draggedCorpses[corpse.ID()] = nil
         return
     end
-    
-    local target_distance = mq.TLO.Target.Distance()
-    local current_target_name = mq.TLO.Target.Name()
+
+    -- Determine if the character is in a raid or group
+    local inRaid, inGroup = isInGroupOrRaid()
+
+    -- Verify that the corpse belongs to a group or raid member, or is the dragger's own corpse
+    if not isCorpseFromGroupOrRaid(corpse, inRaid, inGroup) then
+        print("Corpse", dragname, "does not belong to a group or raid member, skipping.")
+        return
+    end
 
     -- Always check if any clerics are near the corpse, regardless of the dragger's position
     local clericNearCorpse = isClericNearCorpse(corpse)
 
     -- If a cleric is near the corpse, do not proceed with dragging
     if clericNearCorpse then
+        print("Cleric too close to corpse", dragname, "removing from draggedCorpses")
         draggedCorpses[corpse.ID()] = nil
         return
     end
+
+    local target_distance = mq.TLO.Target.Distance()
+    local current_target_name = mq.TLO.Target.Name()
 
     -- Check if the target is nil or if the target's name doesn't match the corpse name
     if target_distance == nil or current_target_name ~= corpse.Name() then
@@ -135,8 +197,8 @@ end
 
 -- Function to check and drag multiple corpses
 local function dragcheck()
-    local corpsecount = mq.TLO.SpawnCount('pccorpse radius ' .. maxdistance)()
-    local activeDraggingCount = 0  -- Count the number of currently dragged corpses
+    local corpsecount = mq.TLO.SpawnCount('pccorpse radius ' .. maxdistance)() or 0  -- Ensure corpsecount is a valid number
+    local activeDraggingCount = 0  -- Ensure activeDraggingCount is initialized to 0
     
     -- Count currently dragged corpses
     for _, isDragging in pairs(draggedCorpses) do
@@ -145,7 +207,7 @@ local function dragcheck()
         end
     end
 
-    if corpsecount and corpsecount >= 1 then
+    if corpsecount >= 1 then  -- Ensure corpsecount is valid before comparison
         for i = 1, corpsecount do
             -- If we are already dragging the maximum number of corpses, break the loop
             if activeDraggingCount >= maxcorpses then break end
