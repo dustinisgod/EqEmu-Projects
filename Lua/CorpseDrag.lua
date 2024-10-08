@@ -1,4 +1,5 @@
 local mq = require('mq')
+local imgui = require('ImGui')
 
 -- Configuration
 local clericdistance = 30  -- Distance to stop dragging if a cleric is near the corpse
@@ -8,6 +9,9 @@ local maxcorpses = 4       -- Maximum number of corpses to drag at one time
 
 -- Corpses being dragged
 local draggedCorpses = {}
+
+-- Script state variable
+local isPaused = false
 
 -- Helper function to check if a corpse still exists and has valid properties
 local function validateCorpse(corpse)
@@ -249,10 +253,41 @@ local function dragcheck()
     end
 end
 
--- Entry point for script execution, continuously check and drag corpses
+-- ImGui function to render the Pause/Unpause and END buttons with a default size
+local function corpsedragGUI()
+    -- Set the default window size (width, height)
+    imgui.SetNextWindowSize(120, 90)  -- Example: 300 width, 150 height
+
+    imgui.Begin('CorpseDrag')  -- Create a window titled 'CorpseDrag'
+
+    -- Pause/Unpause Button
+    if isPaused then
+        if imgui.Button('UNPAUSE') then
+            isPaused = false
+        end
+    else
+        if imgui.Button('PAUSE') then
+            isPaused = true
+        end
+    end
+
+    -- END Button to stop the Lua script
+    if imgui.Button('END') then
+        mq.cmd('/lua stop corpsedrag')  -- Send command to stop the script
+    end
+
+    imgui.End()  -- End the window
+end
+
+-- Initialize ImGui and render the button
+mq.imgui.init('PauseControl', corpsedragGUI)
+
+-- Entry point for script execution
 local function main()
     while true do
-        dragcheck()
+        if not isPaused then
+            dragcheck()
+        end
         mq.delay(100)  -- Adjust delay to control how often dragging is checked
     end
 end
