@@ -1,4 +1,8 @@
 local mq = require('mq')
+local imgui = require('ImGui')
+
+-- Variables for GUI
+local isPaused = false
 
 -- Function to get the spawn count
 local function getSpawnCount(searchString)
@@ -56,8 +60,43 @@ local function lootCorpse(playerName)
     end
 end
 
+-- ImGui function to render the Pause/Unpause and END buttons with a default size
+local function corpselootGUI()
+    -- Set the default window size (width, height)
+    imgui.SetNextWindowSize(120, 90)  -- Example: 300 width, 150 height
+
+    imgui.Begin('CorpseLoot')  -- Create a window titled 'CorpseLoot'
+
+    -- Pause/Unpause Button
+    if isPaused then
+        if imgui.Button('UNPAUSE') then
+            isPaused = false
+        end
+    else
+        if imgui.Button('PAUSE') then
+            isPaused = true
+        end
+    end
+
+    -- END Button to stop the Lua script
+    if imgui.Button('END') then
+        mq.cmd('/lua stop corpseloot')  -- Send command to stop the script
+    end
+
+    imgui.End()  -- End the window
+end
+
+-- Initialize ImGui and render the button
+mq.imgui.init('PauseControl', corpselootGUI)
+
 -- Main loop
 while true do
+    -- If the script is paused, skip the rest of the loop
+    if isPaused then
+        mq.delay(1000)
+        goto continue
+    end
+
     -- Check if there are corpses within 150 radius
     local playerName = tostring(mq.TLO.Me.Name())
     local searchString150 = string.format('corpse %s radius 150', playerName)
@@ -80,4 +119,6 @@ while true do
 
     -- Delay before the next iteration of the loop
     mq.delay(1000)
+
+    ::continue::
 end
