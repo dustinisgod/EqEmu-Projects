@@ -4,3 +4,12 @@ Works best with two pullers running in chorus, if one goes down the other will g
 
 lootcorpse.lua - any corpse that belongs to your character will be summoned to you and looted.
 Great for EMU servers where corpses do not disapear after rez.
+
+
+guild-invite.lua - invites anyone currently online and in your dannet client to the guild of the character its ran on. Make sure this character has invite permissions.
+
+
+mend.lua - uses mend anytime its up on your monk to help train it up.
+
+
+feign.lua - spams feigndeath on your monk anytime its up to train it.
