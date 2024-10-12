@@ -30,14 +30,14 @@ Show/Hide Window:
 
 --Coin Trade Command: You can trade coins to a specified target using this command.
 
-    Format:
-    /tradeit coin <target_name> <coin_type> <amount>
-
-    Supported Coin Types:
-        platinum
-        gold
-        silver
-        copper
+        Format:
+        /tradeit coin <target_name> <coin_type> <amount>
+    
+        Supported Coin Types:
+            platinum
+            gold
+            silver
+            copper
 
 Example:
     /tradeit coin jackthebarb platinum 2450
