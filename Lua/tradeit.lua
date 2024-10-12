@@ -543,6 +543,20 @@ local function isTargetInRange(maxDistance)
     return false  -- Target is out of range or not selected
 end
 
+local showtradeitGUI = true
+
+-- Command to hide the tradeit GUI
+local function hideTradeitGUI()
+    showtradeitGUI = false
+    PRINTMETHOD("Tradeit GUI hidden.")
+end
+
+-- Command to show the tradeit GUI
+local function showTradeitGUI()
+    showtradeitGUI = true
+    PRINTMETHOD("Tradeit GUI shown.")
+end
+
 local function tradeitGUI()
 
     if not showtradeitGUI then return end
@@ -762,6 +776,9 @@ end
 mq.imgui.init('TRADEIT', tradeitGUI)
 
 local function setup()
+    -- Register commands to hide/show the GUI
+    mq.bind('/tradeithide', hideTradeitGUI)
+    mq.bind('/tradeitshow', showTradeitGUI)
     -- Register binds
     mq.bind('/tradeit', bind_tradeit)
 
