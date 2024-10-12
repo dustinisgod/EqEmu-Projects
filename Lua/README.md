@@ -81,3 +81,5 @@ guild-invite.lua – Automatically invites any player in your Dannet network to 
 mend.lua – Uses the monk's Mend ability whenever it's available, helping you train it efficiently.
 
 feign.lua – Repeatedly uses Feign Death on your monk as soon as it’s available to maximize skill training.
+
+navlook.lua - run this while moving your characters through a dungeon or what not. helps them get up and down ladders and other up and down facing obstacles. This is a work in progress.
