@@ -1,3 +1,10 @@
+tradeit.lua - trade items or coins to pc/npc. You can drag and drop items onto the window to autofill the name. Start typing the name of a item and it will autofill from your inventory. Start typing the name of a player and it will check your raid/group and any pc within 200 units for names to autofill. Start typing any any npc within 200 units will start to autofill. Group trade gives the coin amount to each member of your group within 200 units. Raid trade gives the coin amount to each member of your raid within 200 units.
+
+- Tab Key to autofill suggested name and go to next box.
+/tradeithide - hides window
+/tradeitshow - shows window
+
+
 dragcorpse.lua - pulls any corpse found nearby that is in your raid or group or youself, and drag it. Will stop dragging the corpse once the corpse is near a cleric in your group or raid.
 Works best with two pullers running in chorus, if one goes down the other will grab the corpse of the dead puller and drag it back with them to the group and leave it near a cleric to be rezzed.
 
