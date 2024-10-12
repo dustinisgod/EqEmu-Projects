@@ -157,7 +157,6 @@ local function drag(corpse, dragname)
 
     -- Verify that the corpse belongs to a group or raid member, or is the dragger's own corpse
     if not isCorpseFromGroupOrRaid(corpse, inRaid, inGroup) then
-        print("Corpse", dragname, "does not belong to a group or raid member, skipping.")
         return
     end
 
