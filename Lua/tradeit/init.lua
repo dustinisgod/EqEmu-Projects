@@ -858,16 +858,18 @@ local function bind_tradeit(...)
     end
 end
 
-local function isTargetInRange(maxDistance)
-    if mq.TLO.Target() then
-        local distance = mq.TLO.Target.Distance3D()
+local function isSpawnInRange(spawnName, maxDistance)
+    local spawn = mq.TLO.Spawn(spawnName)
+    
+    if spawn() then
+        local distance = spawn.Distance()
         if distance and distance <= maxDistance then
             return true
         else
-            printf(string.format("Error: Target is out of range (%.2f units away, max %d units).", distance, maxDistance))
+            printf(string.format("Error: Spawn '%s' is out of range (%.2f units away, max %d units).", spawnName, distance, maxDistance))
         end
     else
-        printf("Error: No target selected.")
+        printf(string.format("Error: Spawn '%s' not found.", spawnName))
     end
     return false
 end
@@ -964,8 +966,6 @@ local function renderTargetInputSection()
         ImGui.EndChild()
     end
     
-
-
     ImGui.NewLine()
     ImGui.Separator()
 end
@@ -1037,7 +1037,7 @@ if ImGui.Button('Trade') then
         printf("Item quantity cannot be 0.")
     elseif nameInput == "" then
         printf("Target name is missing.")
-    elseif not isTargetInRange(200) then
+    elseif not isSpawnInRange(nameInput, 200) then
         printf("Target is out of range.")
     elseif not restrictToInventoryCheck(itemName1) then
     else
@@ -1102,7 +1102,7 @@ local function renderTradeCoinsInputSection()
     imgui.NewLine()
 
     if ImGui.Button('Trade') then
-        if not isTargetInRange(200) then
+        if not isSpawnInRange(nameInput, 200) then
         elseif not ValidateCoinAmount(coinAmountInput) then
         else
             printf("Checking available %s: %s", capitalize(coinTypeInput), availableCoinAmount or "nil")
