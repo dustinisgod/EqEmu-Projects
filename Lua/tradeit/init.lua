@@ -28,6 +28,7 @@ local allItemsProcessed = false
 -- Declare local variables
 local prevItemName1, prevItemName2, prevItemName3, prevItemName4, prevItemName5, prevItemName6, prevItemName7, prevItemName8, prevItemName9 = "", "", "", "", "", "", "", "", ""
 local prevItemNameQuantity1, prevItemNameQuantity2, prevItemNameQuantity3, prevItemNameQuantity4, prevItemNameQuantity5, prevItemNameQuantity6, prevItemNameQuantity7, prevItemNameQuantity8, prevItemNameQuantity9 = "", "", "", "", "", "", "", "", ""
+local prevTargetName = ""
 
 local suggestionList = {}      -- Hold suggestions
 local showSuggestions = false   -- Control whether suggestions are shown
@@ -311,15 +312,14 @@ local function isRaidOrGroupMember(name)
 end
 
 -- Auto-complete closest match for names (players, NPCs, etc.)
-local function findClosestMatch(input)
+local function findClosestMatches(input)
     input = input:lower()
-    local closestMatch = nil
-    local potentialMatches = {}
+    local potentialNameMatches = {}
 
     -- Match raid/group members
     for _, name in ipairs(memberNames) do
         if name:lower():find(input, 1, true) then
-            table.insert(potentialMatches, name)
+            table.insert(potentialNameMatches, name)
         end
     end
 
@@ -330,7 +330,7 @@ local function findClosestMatch(input)
         if npc() and npc.Distance3D() <= 200 then
             local cleanName = npc.CleanName():lower()
             if cleanName:find(input, 1, true) then
-                table.insert(potentialMatches, npc.CleanName())
+                table.insert(potentialNameMatches, npc.CleanName())
             end
         end
     end
@@ -342,13 +342,13 @@ local function findClosestMatch(input)
         if pc() and pc.Distance3D() <= 200 and not isRaidOrGroupMember(pc.Name()) then
             local cleanName = pc.CleanName():lower()
             if cleanName:find(input, 1, true) then
-                table.insert(potentialMatches, pc.CleanName())
+                table.insert(potentialNameMatches, pc.CleanName())
             end
         end
     end
 
-    -- Return the closest match if found
-    return #potentialMatches > 0 and potentialMatches[1] or nil
+    -- Return the list of all potential matches
+    return potentialNameMatches
 end
 
 -- Validate the target name (NPC or PC)
@@ -453,7 +453,7 @@ end
 local function findClosestItemMatch(input)
     input = input:lower()
     local closestMatch = nil
-    local potentialMatches = {}
+    local potentialItemMatches = {}
 
     -- Check main inventory slots (0-32)
     for i = 0, 32 do
@@ -462,7 +462,7 @@ local function findClosestItemMatch(input)
             local itemNameLower = item.Name():lower()
             -- Check if the item name contains the input as a substring
             if itemNameLower:find(input, 1, true) then
-                table.insert(potentialMatches, itemNameLower)  -- Store potential match
+                table.insert(potentialItemMatches, itemNameLower)  -- Store potential match
             end
         end
     end
@@ -479,7 +479,7 @@ local function findClosestItemMatch(input)
                         local containerItemNameLower = containerItem.Name():lower()
                         -- Check if the container item's name contains the input as a substring
                         if containerItemNameLower:find(input, 1, true) then
-                            table.insert(potentialMatches, containerItemNameLower)  -- Store potential match
+                            table.insert(potentialItemMatches, containerItemNameLower)  -- Store potential match
                         end
                     end
                 end
@@ -488,7 +488,7 @@ local function findClosestItemMatch(input)
     end
 
     -- Return the potential matches found
-    return potentialMatches
+    return potentialItemMatches
 end
 
 
@@ -941,25 +941,30 @@ local function renderTargetInputSection()
     ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImVec4(1.0, 0.0, 0.0, 1.0))
     if ImGui.Button("T", 20, 20) then
         nameInput = mq.TLO.Target.CleanName() or ""
+        prevTargetName = nameInput
     end
     ImGui.PopStyleColor(3)
 
-    local closestMatch = nameInput ~= "" and findClosestMatch(nameInput) or nil
-    if nameInput ~= "" and closestMatch and closestMatch:lower() ~= nameInput:lower() then
-        ImGui.TextColored(0.5, 0.5, 0.5, 1.0, "Did you mean: " .. closestMatch)
-    end
+    local suggestionNameList = nameInput ~= "" and findClosestMatches(nameInput) or {} 
+    local showNameSuggestions = nameInput ~= "" and #suggestionNameList > 0
 
-    -- Auto-complete for Target Name
-    if nameInput ~= "" and ImGui.IsKeyPressed(ImGuiKey.Tab) and closestMatch then
-        autoCompletePendingName = true
-        autoCompleteTimerName = os.clock() + 0.05
-    end
-    if autoCompletePendingName and os.clock() > autoCompleteTimerName then
-        if closestMatch then
-            nameInput = closestMatch
+    -- Display the dropdown of suggestions if there are any
+    if showNameSuggestions and prevTargetName ~= nameInput then
+        ImGui.BeginChild("##suggestions", 200, 100, ImGuiChildFlags.Scrollable)
+        for _, suggestion in ipairs(suggestionNameList) do
+            if ImGui.Selectable(suggestion) then
+                nameInput = suggestion
+                prevTargetName = nameInput
+                -- After selecting, we should clear the input for suggestion list and hide it
+                suggestionNameList = {}  -- Clear the suggestions
+                showNameSuggestions = false  -- Disable further showing of suggestions
+                break  -- Immediately break the loop after selection to stop rendering the list
+            end
         end
-        autoCompletePendingName = false
+        ImGui.EndChild()
     end
+    
+
 
     ImGui.NewLine()
     ImGui.Separator()
