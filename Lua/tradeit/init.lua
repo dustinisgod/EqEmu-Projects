@@ -25,6 +25,12 @@ local showtradeitGUI = true  -- Flag to control the GUI visibility
 local restrictToInventory = false
 local allItemsProcessed = false
 
+-- Define the state for the checkboxes
+local filterRaidMembers = true
+local filterGroupMembers = true
+local filterNPCs = true
+local filterPCs = true
+
 -- Declare local variables
 local prevItemName1, prevItemName2, prevItemName3, prevItemName4, prevItemName5, prevItemName6, prevItemName7, prevItemName8, prevItemName9 = "", "", "", "", "", "", "", "", ""
 local prevItemNameQuantity1, prevItemNameQuantity2, prevItemNameQuantity3, prevItemNameQuantity4, prevItemNameQuantity5, prevItemNameQuantity6, prevItemNameQuantity7, prevItemNameQuantity8, prevItemNameQuantity9 = "", "", "", "", "", "", "", "", ""
@@ -36,7 +42,6 @@ local showSuggestions = false   -- Control whether suggestions are shown
 -- Initialize itemName and itemQuantity variables at the top (global scope)
 local nameInput, itemName1, itemName2, itemName3, itemName4, itemName5, itemName6, itemName7, itemName8, itemName9 = "", "", "", "", "", "", "", "", "", ""
 local coinAmountInput, itemQuantity1, itemQuantity2, itemQuantity3, itemQuantity4, itemQuantity5, itemQuantity6, itemQuantity7, itemQuantity8, itemQuantity9 = "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"
-
 
 -- Command to hide the tradeit GUI
 local function hideTradeitGUI()
@@ -311,38 +316,72 @@ local function isRaidOrGroupMember(name)
     return false
 end
 
--- Auto-complete closest match for names (players, NPCs, etc.)
-local function findClosestMatches(input)
+-- Function to check if a given name is a raid member
+local function isRaidMember(name)
+    local raidMemberCount = mq.TLO.Raid.Members() or 0
+    for i = 1, raidMemberCount do
+        local raidMember = mq.TLO.Raid.Member(i).Name()
+        if raidMember and raidMember:lower() == name:lower() then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function to check if a given name is a group member
+local function isGroupMember(name)
+    local groupMemberCount = mq.TLO.Group.Members() or 0
+    for i = 1, groupMemberCount do
+        local groupMember = mq.TLO.Group.Member(i).Name()
+        if groupMember and groupMember:lower() == name:lower() then
+            return true
+        end
+    end
+    return false
+end
+
+local function findClosestMatches(input, includeRaidMembers, includeGroupMembers, includeNPCs, includePCs)
     input = input:lower()
     local potentialNameMatches = {}
 
-    -- Match raid/group members
-    for _, name in ipairs(memberNames) do
-        if name:lower():find(input, 1, true) then
-            table.insert(potentialNameMatches, name)
-        end
-    end
-
-    -- Match NPCs within 200 units
-    local npcCount = mq.TLO.SpawnCount("npc")() or 0
-    for i = 1, npcCount do
-        local npc = mq.TLO.NearestSpawn(i, "npc")
-        if npc() and npc.Distance3D() <= 200 then
-            local cleanName = npc.CleanName():lower()
-            if cleanName:find(input, 1, true) then
-                table.insert(potentialNameMatches, npc.CleanName())
+    -- Match raid/group members if the respective filter is enabled
+    if includeRaidMembers or includeGroupMembers then
+        for _, name in ipairs(memberNames) do
+            if name:lower():find(input, 1, true) then
+                -- Check if it's a raid member or group member depending on the filter
+                if includeRaidMembers and isRaidMember(name) then
+                    table.insert(potentialNameMatches, name)
+                elseif includeGroupMembers and isGroupMember(name) then
+                    table.insert(potentialNameMatches, name)
+                end
             end
         end
     end
 
-    -- Match nearby PCs (not in raid/group) within 200 units
-    local playerCount = mq.TLO.SpawnCount("pc")() or 0
-    for i = 1, playerCount do
-        local pc = mq.TLO.NearestSpawn(i, "pc")
-        if pc() and pc.Distance3D() <= 200 and not isRaidOrGroupMember(pc.Name()) then
-            local cleanName = pc.CleanName():lower()
-            if cleanName:find(input, 1, true) then
-                table.insert(potentialNameMatches, pc.CleanName())
+    -- Match NPCs within 200 units if the NPC filter is enabled
+    if includeNPCs then
+        local npcCount = mq.TLO.SpawnCount("npc")() or 0
+        for i = 1, npcCount do
+            local npc = mq.TLO.NearestSpawn(i, "npc")
+            if npc() and npc.Distance3D() <= 200 then
+                local cleanName = npc.CleanName():lower()
+                if cleanName:find(input, 1, true) then
+                    table.insert(potentialNameMatches, npc.CleanName())
+                end
+            end
+        end
+    end
+
+    -- Match nearby PCs (not in raid/group) within 200 units if the PC filter is enabled
+    if includePCs then
+        local playerCount = mq.TLO.SpawnCount("pc")() or 0
+        for i = 1, playerCount do
+            local pc = mq.TLO.NearestSpawn(i, "pc")
+            if pc() and pc.Distance3D() <= 200 and not isRaidOrGroupMember(pc.Name()) then
+                local cleanName = pc.CleanName():lower()
+                if cleanName:find(input, 1, true) then
+                    table.insert(potentialNameMatches, pc.CleanName())
+                end
             end
         end
     end
@@ -927,6 +966,7 @@ local function quantityValidation(itemQuantityInput)
 end
 
 local function renderTargetInputSection()
+    -- Centered section header with colored text
     CenterTextWithColoredSection("------------------------= ", "Target", " =------------------------", {1.0, 1.0, 0.0, 1.0})
     ImGui.Separator()
 
@@ -947,7 +987,8 @@ local function renderTargetInputSection()
     end
     ImGui.PopStyleColor(3)
 
-    local suggestionNameList = nameInput ~= "" and findClosestMatches(nameInput) or {} 
+    -- GUI logic for suggestion list
+    local suggestionNameList = nameInput ~= "" and findClosestMatches(nameInput, filterRaidMembers, filterGroupMembers, filterNPCs, filterPCs) or {} 
     local showNameSuggestions = nameInput ~= "" and #suggestionNameList > 0
 
     -- Display the dropdown of suggestions if there are any
@@ -965,7 +1006,15 @@ local function renderTargetInputSection()
         end
         ImGui.EndChild()
     end
-    
+
+    -- Collapsible section for filter checkboxes
+    if ImGui.CollapsingHeader("Filters") then
+        -- Display the checkboxes for filtering
+        filterRaidMembers, _ = ImGui.Checkbox("Raid Members", filterRaidMembers)
+        filterGroupMembers, _ = ImGui.Checkbox("Group Members", filterGroupMembers)
+        filterNPCs, _ = ImGui.Checkbox("NPCs", filterNPCs)
+        filterPCs, _ = ImGui.Checkbox("PCs (not in raid/group)", filterPCs)
+    end
     ImGui.NewLine()
     ImGui.Separator()
 end
@@ -1160,7 +1209,7 @@ local function tradeitGUI()
     if not showtradeitGUI then return end
 
     -- Set window size
-    ImGui.SetNextWindowSize(360, 400)
+    ImGui.SetNextWindowSize(360, 630)
 
     -- Begin ImGui window with a unique identifier and close behavior
     isOpen, _ = ImGui.Begin("TRADEIT", isOpen, 2)
